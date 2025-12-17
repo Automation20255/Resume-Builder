@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visionary Resume Builder</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Define Inter font globally */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        /* Print styles to hide the control panel and optimize the resume preview */
+        @media print {
+            .hidden-for-print {
+                display: none !important;
+            }
+            body {
+                background: none;
+                margin: 0;
+                padding: 0;
+            }
+            #resume-document {
+                box-shadow: none !important;
+                margin: 0 !important;
+                padding: 0.5rem 1rem !important; /* Smaller print padding */
+                max-width: none !important;
+                min-height: auto !important;
+            }
+            /* Fix for classic two-column layout on print */
+            .classic-layout-grid {
+                /* Force a stable 2-column structure for the classic template on paper */
+                display: grid !important; 
+                grid-template-columns: 28% 72% !important; 
+                gap: 1.5rem !important;
+                margin-top: 0 !important;
+            }
+        }
+        
+        /* Custom styles for the scrollable form area */
+        #forms-container {
+            max-height: calc(100vh - 350px); /* Adjusted height */
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+        
+        /* Utility class for classic print fix */
+        .classic-layout-grid-container {
+            margin-top: 1rem;
+        }
+    </style>
+    <script>
+        // --- Theme and Template Definitions ---
+        const templates = [
+            { id: 'modern', name: 'Modern (Single Column)' },
+            { id: 'classic', name: 'Classic (Two Column)' },
+            { id: 'minimalist', name: 'Minimalist (Compact)' },
+        ];
+        
+        const themes = [
+            { id: 'sky', name: 'Sky Blue (Default)', primaryColorClass: 'sky-700', buttonBgClass: 'bg-sky-500', buttonHoverClass: 'hover:bg-sky-600', linkClass: 'hover:text-sky-600' },
+            { id: 'indigo', name: 'Professional Indigo', primaryColorClass: 'indigo-700', buttonBgClass: 'bg-indigo-600', buttonHoverClass: 'hover:bg-indigo-700', linkClass: 'hover:text-indigo-600' },
+            { id: 'teal', name: 'Modern Teal', primaryColorClass: 'teal-600', buttonBgClass: 'bg-teal-500', buttonHoverClass: 'hover:bg-teal-600', linkClass: 'hover:text-teal-500' },
+            { id: 'slate', name: 'Neutral Slate', primaryColorClass: 'slate-700', buttonBgClass: 'bg-slate-600', buttonHoverClass: 'hover:bg-slate-700', linkClass: 'hover:text-slate-600' },
+            { id: 'emerald', name: 'Energetic Emerald', primaryColorClass: 'emerald-600', buttonBgClass: 'bg-emerald-500', buttonHoverClass: 'hover:bg-emerald-600', linkClass: 'hover:text-emerald-500' },
+        ];
+
+        // --- Data Structures ---
+        const newExperienceEntry = () => ({
+            id: Date.now() + Math.random(),
+            title: 'Job Title',
+            company: 'Company Name',
+            city: 'City, State',
+            start: 'YYYY',
+            end: 'Present',
+            description: 'Key achievement 1.\nKey achievement 2.',
+        });
+
+        const newEducationEntry = () => ({
+            id: Date.now() + Math.random(),
+            degree: 'Degree Name',
+            institution: 'University Name',
+            city: 'City, State',
+            year: 'YYYY',
+            gpa: 'X.X/4.0',
+        });
+        
+        const newProjectEntry = () => ({
+            id: Date.now() + Math.random(),
+            name: 'Project Name',
+            role: 'Your Role',
+            url: 'github.com/project',
+            description: 'Brief description of the project and your impact. (1-2 sentences)',
+        });
+
+        const initialResumeData = {
+            personal: {
+                name: 'Alex Johnson',
+                title: 'Full Stack Developer',
+                phone: '555-0100',
+                email: 'alex.johnson@dev.io',
+                linkedin: 'linkedin.com/in/alexjohnsondev',
+                github: 'github.com/alex-dev',
+                city: 'Seattle, WA',
+            },
+            summary: 'Highly motivated and results-oriented Full Stack Developer with 5+ years of experience designing, developing, and deploying scalable web applications. Expertise in the modern JavaScript ecosystem (React, Node.js) and cloud services. Seeking to leverage technical skills and agile methodologies to deliver innovative solutions.',
+            experience: [
+                {
+                    id: 1,
+                    title: 'Senior Frontend Engineer',
+                    company: 'Innovatech Solutions',
+                    city: 'Seattle, WA',
+                    start: 'Jan 2022',
+                    end: 'Present',
+                    description: 'Led the development of a real-time data visualization dashboard using React and D3.js, improving client reporting efficiency by 30%.\nArchitected and maintained a component library with TypeScript and Storybook, increasing team velocity by 15%.\nMentored 3 junior developers on best practices and code review processes.',
+                },
+            ],
+            education: [
+                {
+                    id: 1,
+                    degree: 'M.S. in Computer Science',
+                    institution: 'University of Washington',
+                    city: 'Seattle, WA',
+                    year: '2019',
+                    gpa: '3.9/4.0',
+                },
+            ],
+            projects: [
+                {
+                    id: 101,
+                    name: 'Collaborative Editor App',
+                    role: 'Lead Developer',
+                    url: 'github.com/editor-app',
+                    description: 'Built a real-time collaborative document editor using React and Firebase Firestore for state synchronization. Handled authentication and fine-grained permissions.',
+                },
+            ],
+            skills: ['React', 'Node.js', 'TypeScript', 'Tailwind CSS', 'AWS', 'PostgreSQL', 'Docker', 'CI/CD', 'Git/GitHub', 'Agile/Scrum'],
+        };
+
+        // --- State Management ---
+        let resumeData = {};
+        let activeTab = 'personal';
+        let activeTemplate = 'modern';
+        let activeTheme = 'sky'; // New state variable
+
+        const tabs = [
+            { id: 'personal', label: 'Contact', icon: '👤' },
+            { id: 'summary', label: 'Summary', icon: '📝' },
+            { id: 'experience', label: 'Experience', icon: '💼' },
+            { id: 'projects', label: 'Projects/Awards', icon: '🏆' },
+            { id: 'education', label: 'Education', icon: '🎓' },
+            { id: 'skills', label: 'Skills', icon: '🛠️' },
+        ];
+
+        // --- Data Persistence and Theme Logic ---
+
+        const getActiveThemeColors = () => {
+            return themes.find(t => t.id === activeTheme) || themes[0];
+        };
+
+        const loadData = () => {
+            try {
+                const savedData = localStorage.getItem('resumeData');
+                const savedTemplate = localStorage.getItem('activeTemplate');
+                const savedTheme = localStorage.getItem('activeTheme'); // Load theme
+                
+                resumeData = savedData ? JSON.parse(savedData) : initialResumeData;
+                activeTemplate = savedTemplate || 'modern';
+                activeTheme = savedTheme || 'sky'; // Set theme
+
+                // Ensure new sections exist if loading old data
+                if (!resumeData.projects) {
+                    resumeData.projects = initialResumeData.projects;
+                }
+            } catch (e) {
+                console.error("Could not load from localStorage:", e);
+                resumeData = initialResumeData;
+                activeTemplate = 'modern';
+                activeTheme = 'sky';
+            }
+        };
+
+        const handleSave = () => {
+            try {
+                localStorage.setItem('resumeData', JSON.stringify(resumeData));
+                localStorage.setItem('activeTemplate', activeTemplate);
+                localStorage.setItem('activeTheme', activeTheme); // Save theme
+                console.log('Resume data, template, and theme saved successfully.');
+            } catch (e) {
+                console.error("Could not save to localStorage:", e);
+            }
+        };
+
+        const updateState = (section, newValue, id = null, field = null) => {
+            if (id !== null) {
+                if (section === 'skills') {
+                    resumeData.skills = newValue.split(',').map(skill => skill.trim()).filter(skill => skill.length > 0);
+                } else if (Array.isArray(resumeData[section])) {
+                    resumeData[section] = resumeData[section].map(item => {
+                        if (item.id === id) {
+                            return { ...item, [field]: newValue };
+                        }
+                        return item;
+                    });
+                }
+            } else {
+                if (field) {
+                    resumeData[section][field] = newValue;
+                } else {
+                    resumeData[section] = newValue; // For summary
+                }
+            }
+        };
+
+        // Add item to a list section
+        const addItem = (section) => {
+            if (section === 'experience') {
+                resumeData.experience.push(newExperienceEntry());
+            } else if (section === 'education') {
+                resumeData.education.push(newEducationEntry());
+            } else if (section === 'projects') {
+                resumeData.projects.push(newProjectEntry());
+            }
+            renderForm();
+        };
+
+        // Delete item from a list section
+        const deleteItem = (section, id) => {
+            resumeData[section] = resumeData[section].filter(item => item.id !== id);
+            renderForm();
+        };
+        
+        const setActiveTemplate = (templateId) => {
+            activeTemplate = templateId;
+            renderSelectors();
+        };
+        
+        const setActiveTheme = (themeId) => {
+            activeTheme = themeId;
+            renderSelectors();
+        };
+
+        // --- Utility Functions for Rendering ---
+
+        const generatePdf = (elementId, filename = 'resume.pdf') => {
+            const element = document.getElementById(elementId);
+            if (element) {
+                const controlPanel = document.getElementById('control-panel');
+                if (controlPanel) controlPanel.classList.add('hidden-for-print');
+
+                // This ensures the preview is rendered with the selected template before printing
+                renderPreview(); 
+
+                document.title = filename.replace('.pdf', '');
+
+                window.print();
+
+                setTimeout(() => {
+                    if (controlPanel) controlPanel.classList.remove('hidden-for-print');
+                    document.title = 'Visionary Resume Builder';
+                }, 500);
+            } else {
+                console.error(`Element with ID ${elementId} not found.`);
+            }
+        };
+
+        // Helper to format description text (multiline to list)
+        const formatDescription = (text, colorClass = 'sky-700') => {
+            if (!text) return '';
+            const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+            if (lines.length === 0) return '';
+            
+            // Use flex and a colored span for the custom bullet point
+            const bulletHtml = `<span class="text-${colorClass} mr-2 flex-shrink-0">•</span>`;
+
+            return `
+                <ul class="list-none ml-4 text-gray-700 text-sm mt-1">
+                    ${lines.map(line => `
+                        <li class="mb-0.5 flex items-start">
+                            ${bulletHtml}
+                            <span class="flex-1">${line}</span>
+                        </li>
+                    `).join('')}
+                </ul>
+            `;
+        };
+
+        // Helper to format contact info
+        const formatContact = (icon, text, linkClass) => {
+            if (!text) return '';
+            const isUrl = text.startsWith('http') || text.startsWith('www');
+            const displayLink = isUrl ? text.replace(/(https?:\/\/)?(www\.)?/i, '') : text;
+            const href = isUrl ? (text.startsWith('http') ? text : `https://${text}`) : (icon === 'email' ? `mailto:${text}` : (icon === 'phone' ? `tel:${text}` : null));
+            
+            let iconEmoji = '';
+            if (icon === 'phone') iconEmoji = '📞';
+            else if (icon === 'email') iconEmoji = '✉️';
+            else if (icon === 'linkedin') iconEmoji = '🔗';
+            else if (icon === 'github') iconEmoji = '💻';
+            else if (icon === 'city') iconEmoji = '📍';
+
+            return { 
+                html: `
+                    <div class="flex items-center text-sm mb-0.5 text-gray-600">
+                        <span class="mr-2">${iconEmoji}</span>
+                        ${href ? `
+                            <a href="${href}" target="_blank" rel="noopener noreferrer" class="${linkClass} print:text-gray-700 print:no-underline">
+                                ${displayLink}
+                            </a>` : `
+                            <span>${text}</span>
+                        `}
+                    </div>
+                `, 
+                emoji: iconEmoji, displayLink, href, text 
+            };
+        };
+
+        // Helper for section title
+        const PreviewSection = (title, content, style = 'modern', colorClass = 'sky-700') => {
+            if (!content || (Array.isArray(content) && content.length === 0)) return '';
+            
+            if (style === 'classic') {
+                 // Classic uses the color only for the title text
+                 return `
+                    <section class="mb-4 pb-1">
+                        <h3 class="text-base font-bold uppercase tracking-wide text-${colorClass} border-b border-gray-400 pb-0.5 mb-1.5">${title}</h3>
+                        ${content}
+                    </section>
+                `;
+            } else if (style === 'minimalist') {
+                // Minimalist uses the color only for the title text
+                return `
+                    <section class="mb-4">
+                        <h3 class="text-base font-bold uppercase tracking-tight text-${colorClass} pb-0.5 mb-1 border-b border-gray-500">${title}</h3>
+                        ${content}
+                    </section>
+                `;
+            } else { // Modern style - uses color for text and border
+                return `
+                    <section class="mb-4 pb-2">
+                        <h3 class="text-lg font-bold uppercase tracking-widest text-${colorClass} border-b-2 border-${colorClass} pb-0.5 mb-1.5">${title}</h3>
+                        ${content}
+                    </section>
+                `;
+            }
+        };
+        
+        // --- Template Rendering Functions ---
+
+        const getSharedContent = () => {
+             const { personal, summary, experience, education, skills, projects } = resumeData;
+            
+             const { primaryColorClass, linkClass } = getActiveThemeColors();
+
+             // Sort experience
+            const experienceContent = experience.slice().sort((a, b) => (a.end === 'Present' ? -1 : (b.end === 'Present' ? 1 : b.id - a.id))).map(exp => ({
+                ...exp,
+                formattedDescription: formatDescription(exp.description, primaryColorClass)
+            }));
+            
+            // Sort projects
+            const projectsContent = projects.slice().map(proj => ({
+                ...proj,
+                formattedDescription: formatDescription(proj.description, primaryColorClass)
+            }));
+
+            // Sort education
+            const educationContent = education.slice().sort((a, b) => (b.year - a.year));
+
+            // Skills rendering
+            const skillsContent = skills.length > 0 ? skills.join(' • ') : '';
+
+            // Contact info
+            const contactInfo = {
+                city: formatContact('city', personal.city, linkClass),
+                phone: formatContact('phone', personal.phone, linkClass),
+                email: formatContact('email', personal.email, linkClass),
+                linkedin: formatContact('linkedin', personal.linkedin, linkClass),
+                github: formatContact('github', personal.github, linkClass),
+            };
+
+            return { personal, summary, experienceContent, educationContent, skillsContent, projectsContent, contactInfo, primaryColorClass, linkClass };
+        }
+
+        const renderModernTemplate = (docContainer) => {
+            const { personal, summary, experienceContent, educationContent, skillsContent, projectsContent, contactInfo, primaryColorClass, linkClass } = getSharedContent();
+            docContainer.className = 'bg-white p-6 shadow-2xl mx-auto my-8 max-w-4xl min-h-[11in] print:shadow-none print:m-0 print:p-4 print:min-h-0';
+            
+            // Experience rendering
+            const expHtml = experienceContent.map(exp => `
+                <div class="mb-3">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h4 class="text-base font-semibold text-gray-800">${exp.title}</h4>
+                            <p class="text-sm font-medium text-${primaryColorClass}">${exp.company} | ${exp.city || ''}</p>
+                        </div>
+                        <p class="text-sm font-semibold text-gray-600 text-right whitespace-nowrap">
+                            ${exp.start} - ${exp.end}
+                        </p>
+                    </div>
+                    ${exp.formattedDescription}
+                </div>
+            `).join('');
+            
+            // Projects rendering
+            const projHtml = projectsContent.map(proj => `
+                <div class="mb-3">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h4 class="text-base font-semibold text-gray-800">${proj.name} 
+                                ${proj.role && `<span class="text-xs font-normal text-gray-500">(${proj.role})</span>`}
+                            </h4>
+                            ${proj.url && `<a href="https://${proj.url}" target="_blank" class="text-sm text-${primaryColorClass.split('-')[0]}-600 ${linkClass}">${proj.url}</a>`}
+                        </div>
+                    </div>
+                    ${proj.formattedDescription}
+                </div>
+            `).join('');
+
+            // Education rendering
+            const eduHtml = educationContent.map(edu => `
+                <div class="mb-2">
+                    <div class="flex justify-between items-start">
+                        <h4 class="text-base font-semibold text-gray-800">${edu.institution}</h4>
+                        <p class="text-sm font-semibold text-gray-600">${edu.year}</p>
+                    </div>
+                    <div class="flex justify-between items-start text-sm text-gray-700">
+                        <p class="italic">${edu.degree} ${edu.gpa && `| GPA: ${edu.gpa}`}</p>
+                        <p class="text-right">${edu.city}</p>
+                    </div>
+                </div>
+            `).join('');
+
+            // Skills rendering
+            const skillsHtml = skillsContent ? `
+                <p class="text-sm text-gray-700">
+                    <span class="font-semibold text-gray-800">Technologies:</span> ${skillsContent}
+                </p>
+            ` : '';
+
+            docContainer.innerHTML = `
+                <!-- Header -->
+                <header class="text-center pb-2 mb-4 border-b-4 border-${primaryColorClass} print:border-b-2">
+                    <h1 class="text-4xl font-extrabold text-gray-900 uppercase tracking-wider">${personal.name || 'Your Full Name'}</h1>
+                    <p class="text-xl font-semibold text-${primaryColorClass} mt-1">${personal.title || 'Professional Title'}</p>
+                    <div class="flex flex-wrap justify-center space-x-4 space-y-0.5 mt-2 text-gray-600 print:mt-1">
+                        ${contactInfo.city.html}
+                        ${contactInfo.phone.html}
+                        ${contactInfo.email.html}
+                        ${contactInfo.linkedin.html}
+                        ${contactInfo.github.html}
+                    </div>
+                </header>
+
+                <!-- Main Content -->
+                <div class="pt-2">
+                    ${PreviewSection('Professional Summary', `<p class="text-gray-700 text-sm">${summary || ''}</p>`, 'modern', primaryColorClass)}
+                    ${PreviewSection('Work Experience', expHtml, 'modern', primaryColorClass)}
+                    ${PreviewSection('Projects & Awards', projHtml, 'modern', primaryColorClass)}
+                    ${PreviewSection('Education', eduHtml, 'modern', primaryColorClass)}
+                    ${PreviewSection('Technical Skills', skillsHtml, 'modern', primaryColorClass)}
+                </div>
+            `;
+        };
+
+        const renderClassicTemplate = (docContainer) => {
+            const { personal, summary, experienceContent, educationContent, skillsContent, projectsContent, contactInfo, primaryColorClass, linkClass } = getSharedContent();
+            // Add custom class for print fix
+            docContainer.className = 'bg-white p-6 shadow-2xl mx-auto my-8 max-w-4xl min-h-[11in] print:shadow-none print:m-0 print:p-4 print:min-h-0 classic-layout-grid-container';
+
+            // Experience rendering
+            const expHtml = experienceContent.map(exp => `
+                <div class="mb-3">
+                    <div class="flex justify-between items-start">
+                        <h4 class="text-base font-semibold text-gray-800">${exp.title}</h4>
+                        <p class="text-sm font-semibold text-gray-600 text-right whitespace-nowrap">${exp.start} - ${exp.end}</p>
+                    </div>
+                    <p class="text-sm italic text-${primaryColorClass}">${exp.company} | ${exp.city || ''}</p>
+                    ${exp.formattedDescription}
+                </div>
+            `).join('');
+            
+            // Projects rendering (Main column content)
+            const projHtml = projectsContent.map(proj => `
+                <div class="mb-3">
+                    <div class="flex justify-between items-start">
+                        <h4 class="text-base font-semibold text-gray-800">${proj.name}</h4>
+                        ${proj.url && `<a href="https://${proj.url}" target="_blank" class="text-sm text-${primaryColorClass} ${linkClass} whitespace-nowrap">${proj.url}</a>`}
+                    </div>
+                    <p class="text-sm italic text-gray-700 mb-0.5">${proj.role}</p>
+                    ${proj.formattedDescription}
+                </div>
+            `).join('');
+
+            // Education rendering (simplified for classic sidebar)
+            const eduHtml = educationContent.map(edu => `
+                <div class="mb-2">
+                    <h4 class="text-sm font-bold text-gray-800">${edu.institution} (${edu.year})</h4>
+                    <p class="text-xs italic text-gray-700">${edu.degree}</p>
+                    ${edu.gpa && `<p class="text-xs text-gray-600">GPA: ${edu.gpa}</p>`}
+                </div>
+            `).join('');
+
+            // Skills rendering (for sidebar)
+            const skillsListHtml = skillsContent ? `
+                <ul class="list-inside list-none text-sm text-gray-700 space-y-0.5 mt-1">
+                    ${skillsContent.split(' • ').map(skill => `<li class="flex items-center"><span class="mr-2 text-${primaryColorClass}">•</span> ${skill}</li>`).join('')}
+                </ul>
+            ` : '';
+
+            // Sidebar Contact HTML (simplified)
+            const sidebarContactHtml = `
+                <div class="text-sm space-y-1">
+                    ${contactInfo.phone.text && `<p class="flex items-center text-gray-700"><span class="mr-2 text-${primaryColorClass}">📞</span>${contactInfo.phone.text}</p>`}
+                    ${contactInfo.email.text && `<a href="mailto:${contactInfo.email.text}" class="flex items-center text-gray-700 ${linkClass}"><span class="mr-2 text-${primaryColorClass}">✉️</span>${contactInfo.email.text}</a>`}
+                    ${contactInfo.linkedin.text && `<a href="${contactInfo.linkedin.href}" target="_blank" class="flex items-center text-gray-700 ${linkClass}"><span class="mr-2 text-${primaryColorClass}">🔗</span>${contactInfo.linkedin.displayLink}</a>`}
+                    ${contactInfo.github.text && `<a href="${contactInfo.github.href}" target="_blank" class="flex items-center text-gray-700 ${linkClass}"><span class="mr-2 text-${primaryColorClass}">💻</span>${contactInfo.github.displayLink}</a>`}
+                    ${contactInfo.city.text && `<p class="flex items-center text-gray-700"><span class="mr-2 text-${primaryColorClass}">📍</span>${contactInfo.city.text}</p>`}
+                </div>
+            `;
+
+            docContainer.innerHTML = `
+                <header class="text-center pb-4">
+                    <h1 class="text-3xl font-bold text-gray-900 uppercase tracking-widest">${personal.name || 'Your Full Name'}</h1>
+                    <p class="text-lg font-medium text-gray-600 mt-1">${personal.title || 'Professional Title'}</p>
+                </header>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 classic-layout-grid">
+                    <!-- Sidebar (Left Column) -->
+                    <div class="lg:col-span-1 border-r border-gray-300 lg:pr-4">
+                        ${PreviewSection('Contact', sidebarContactHtml, 'classic', primaryColorClass)}
+                        ${PreviewSection('Skills', skillsListHtml, 'classic', primaryColorClass)}
+                        ${PreviewSection('Education', eduHtml, 'classic', primaryColorClass)}
+                    </div>
+
+                    <!-- Main Content (Right Column) -->
+                    <div class="lg:col-span-2">
+                        ${PreviewSection('Profile Summary', `<p class="text-gray-700 text-sm">${summary || ''}</p>`, 'classic', primaryColorClass)}
+                        ${PreviewSection('Experience', expHtml, 'classic', primaryColorClass)}
+                        ${PreviewSection('Projects & Awards', projHtml, 'classic', primaryColorClass)}
+                    </div>
+                </div>
+            `;
+        };
+        
+        const renderMinimalistTemplate = (docContainer) => {
+            const { personal, summary, experienceContent, educationContent, skillsContent, projectsContent, contactInfo, primaryColorClass, linkClass } = getSharedContent();
+            docContainer.className = 'bg-white p-6 shadow-2xl mx-auto my-8 max-w-4xl min-h-[11in] print:shadow-none print:m-0 print:p-4 print:min-h-0';
+
+            // Contact string for header
+            const contactLinks = [
+                contactInfo.city.displayLink,
+                contactInfo.phone.displayLink,
+                contactInfo.email.displayLink,
+                contactInfo.linkedin.displayLink,
+                contactInfo.github.displayLink,
+            ].filter(Boolean).join(' | ');
+
+            // Experience rendering
+            const expHtml = experienceContent.map(exp => `
+                <div class="mb-3">
+                    <div class="flex justify-between items-baseline font-bold text-gray-800">
+                        <h4 class="text-base">${exp.title} - ${exp.company}</h4>
+                        <p class="text-sm font-normal text-gray-600 text-right whitespace-nowrap">${exp.start} - ${exp.end}</p>
+                    </div>
+                    <p class="text-sm italic text-gray-600 mb-0.5">${exp.city}</p>
+                    ${exp.formattedDescription}
+                </div>
+            `).join('');
+
+            // Projects rendering
+            const projHtml = projectsContent.map(proj => `
+                <div class="mb-3">
+                    <div class="flex justify-between items-baseline font-bold text-gray-800">
+                        <h4 class="text-base">${proj.name} 
+                            ${proj.url && `<a href="https://${proj.url}" target="_blank" class="text-sm text-gray-600 font-normal ${linkClass} ml-2 print:text-gray-600 print:no-underline">(${proj.url.replace(/(https?:\/\/)?(www\.)?/i, '')})</a>`}
+                        </h4>
+                        <p class="text-sm font-normal text-gray-600 text-right whitespace-nowrap">${proj.role}</p>
+                    </div>
+                    ${proj.formattedDescription}
+                </div>
+            `).join('');
+
+
+            // Education rendering
+            const eduHtml = educationContent.map(edu => `
+                <div class="mb-1">
+                    <div class="flex justify-between items-baseline text-sm font-medium text-gray-800">
+                        <span>${edu.degree}</span>
+                        <span class="text-gray-600 font-normal">${edu.year}</span>
+                    </div>
+                    <div class="flex justify-between items-baseline text-xs text-gray-600">
+                        <span>${edu.institution}, ${edu.city}</span>
+                        ${edu.gpa && `<span class="text-right">GPA: ${edu.gpa}</span>`}
+                    </div>
+                </div>
+            `).join('');
+
+            // Skills rendering (inline list)
+            const skillsHtml = skillsContent ? `
+                <p class="text-sm text-gray-800 mt-1">
+                    ${skillsContent}
+                </p>
+            ` : '';
+
+            docContainer.innerHTML = `
+                <!-- Header -->
+                <header class="text-center pb-2 mb-4">
+                    <h1 class="text-3xl font-extrabold text-gray-900 uppercase tracking-tight">${personal.name || 'Your Full Name'}</h1>
+                    <p class="text-lg font-medium text-gray-700 mt-0.5">${personal.title || 'Professional Title'}</p>
+                    <p class="text-sm text-gray-600 mt-2 border-t border-b border-${primaryColorClass.split('-')[0]}-400 py-1 print:mt-1">${contactLinks}</p>
+                </header>
+
+                <!-- Main Content -->
+                <div class="pt-2">
+                    ${PreviewSection('Profile Summary', `<p class="text-gray-700 text-sm">${summary || ''}</p>`, 'minimalist', primaryColorClass)}
+                    ${PreviewSection('Skills', skillsHtml, 'minimalist', primaryColorClass)}
+                    ${PreviewSection('Professional Experience', expHtml, 'minimalist', primaryColorClass)}
+                    ${PreviewSection('Projects & Awards', projHtml, 'minimalist', primaryColorClass)}
+                    ${PreviewSection('Education', eduHtml, 'minimalist', primaryColorClass)}
+                </div>
+            `;
+        };
+        
+        // --- Core Rendering Functions ---
+
+        const renderForm = () => {
+            const container = document.getElementById('forms-container');
+            if (!container) return;
+            const { primaryColorClass, buttonBgClass, buttonHoverClass } = getActiveThemeColors();
+
+            const data = resumeData[activeTab];
+
+            // Helper to create input fields
+            const createInputField = (label, name, value, id = null) => `
+                <div class="flex flex-col mb-4">
+                    <label for="${name}-${id || '0'}" class="text-sm font-medium text-gray-700 mb-1">${label}</label>
+                    <input
+                        type="text"
+                        id="${name}-${id || '0'}"
+                        name="${name}"
+                        data-id="${id}"
+                        value="${value || ''}"
+                        oninput="handleFormChange('${activeTab}', this.name, this.value, ${id})"
+                        class="p-2 border border-gray-300 rounded-lg focus:ring-${primaryColorClass.split('-')[0]}-500 focus:border-${primaryColorClass.split('-')[0]}-500 transition duration-150"
+                    />
+                </div>
+            `;
+
+            // Helper to create textarea fields
+            const createTextareaField = (label, name, value, id = null, rows = 3) => `
+                <div class="flex flex-col mb-4">
+                    <label for="${name}-${id || '0'}" class="text-sm font-medium text-gray-700 mb-1">${label}</label>
+                    <textarea
+                        id="${name}-${id || '0'}"
+                        name="${name}"
+                        data-id="${id}"
+                        rows="${rows}"
+                        oninput="handleFormChange('${activeTab}', this.name, this.value, ${id})"
+                        class="p-2 border border-gray-300 rounded-lg focus:ring-${primaryColorClass.split('-')[0]}-500 focus:border-${primaryColorClass.split('-')[0]}-500 transition duration-150 resize-none"
+                    >${value || ''}</textarea>
+                </div>
+            `;
+            
+            let html = '';
+
+            if (activeTab === 'personal') {
+                html = `
+                    <h2 class="text-xl font-bold text-${primaryColorClass} border-b pb-2 mb-4 mt-6 flex justify-between items-center">Personal Information</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        ${createInputField('Full Name', 'name', data.name)}
+                        ${createInputField('Job Title', 'title', data.title)}
+                        ${createInputField('Email', 'email', data.email)}
+                        ${createInputField('Phone', 'phone', data.phone)}
+                        ${createInputField('City, State', 'city', data.city)}
+                        ${createInputField('LinkedIn URL', 'linkedin', data.linkedin)}
+                        ${createInputField('GitHub URL', 'github', data.github)}
+                    </div>
+                `;
+            } else if (activeTab === 'summary') {
+                html = `
+                    <h2 class="text-xl font-bold text-${primaryColorClass} border-b pb-2 mb-4 mt-6 flex justify-between items-center">Professional Summary</h2>
+                    ${createTextareaField('Summary', 'summary', resumeData.summary, null, 5)}
+                `;
+            } else if (activeTab === 'experience') {
+                html = `
+                    <h2 class="text-xl font-bold text-${primaryColorClass} border-b pb-2 mb-4 mt-6 flex justify-between items-center">
+                        Work Experience
+                        <button onclick="addItem('experience')" class="flex items-center text-sm ${buttonBgClass} text-white px-3 py-1 rounded-full ${buttonHoverClass} transition duration-200 shadow-md">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> Add
+                        </button>
+                    </h2>
+                    <p class="text-xs text-gray-500 mb-4">Separate bullet points with a new line.</p>
+                    ${data.map(exp => `
+                        <div key="${exp.id}" class="p-4 border border-${primaryColorClass.split('-')[0]}-200 rounded-xl mb-4 bg-white shadow-sm">
+                            <div class="flex justify-end mb-2">
+                                <button onclick="deleteItem('experience', ${exp.id})" class="text-red-500 hover:text-red-700 transition duration-150" title="Delete Entry">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                                </button>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                ${createInputField('Job Title', 'title', exp.title, exp.id)}
+                                ${createInputField('Company', 'company', exp.company, exp.id)}
+                                ${createInputField('Start Date (e.g., Jan 2022)', 'start', exp.start, exp.id)}
+                                ${createInputField('End Date (e.g., Dec 2023 or Present)', 'end', exp.end, exp.id)}
+                            </div>
+                            ${createTextareaField('Key Responsibilities/Achievements (One bullet point per line)', 'description', exp.description, exp.id, 5)}
+                        </div>
+                    `).join('')}
+                `;
+            } else if (activeTab === 'projects') {
+                html = `
+                    <h2 class="text-xl font-bold text-${primaryColorClass} border-b pb-2 mb-4 mt-6 flex justify-between items-center">
+                        Projects & Awards
+                        <button onclick="addItem('projects')" class="flex items-center text-sm ${buttonBgClass} text-white px-3 py-1 rounded-full ${buttonHoverClass} transition duration-200 shadow-md">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> Add
+                        </button>
+                    </h2>
+                    ${data.map(proj => `
+                        <div key="${proj.id}" class="p-4 border border-${primaryColorClass.split('-')[0]}-200 rounded-xl mb-4 bg-white shadow-sm">
+                            <div class="flex justify-end mb-2">
+                                <button onclick="deleteItem('projects', ${proj.id})" class="text-red-500 hover:text-red-700 transition duration-150" title="Delete Entry">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                                </button>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                ${createInputField('Project/Award Name', 'name', proj.name, proj.id)}
+                                ${createInputField('Your Role', 'role', proj.role, proj.id)}
+                                ${createInputField('URL (GitHub/Live Demo)', 'url', proj.url, proj.id)}
+                            </div>
+                            ${createTextareaField('Description/Impact (1-2 sentences)', 'description', proj.description, proj.id, 3)}
+                        </div>
+                    `).join('')}
+                `;
+            } else if (activeTab === 'education') {
+                html = `
+                    <h2 class="text-xl font-bold text-${primaryColorClass} border-b pb-2 mb-4 mt-6 flex justify-between items-center">
+                        Education
+                        <button onclick="addItem('education')" class="flex items-center text-sm ${buttonBgClass} text-white px-3 py-1 rounded-full ${buttonHoverClass} transition duration-200 shadow-md">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> Add
+                        </button>
+                    </h2>
+                    ${data.map(edu => `
+                        <div key="${edu.id}" class="p-4 border border-${primaryColorClass.split('-')[0]}-200 rounded-xl mb-4 bg-white shadow-sm">
+                            <div class="flex justify-end mb-2">
+                                <button onclick="deleteItem('education', ${edu.id})" class="text-red-500 hover:text-red-700 transition duration-150" title="Delete Entry">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                                </button>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                ${createInputField('Degree/Certificate', 'degree', edu.degree, edu.id)}
+                                ${createInputField('Institution', 'institution', edu.institution, edu.id)}
+                                ${createInputField('City', 'city', edu.city, edu.id)}
+                                ${createInputField('Graduation Year (e.g., 2019)', 'year', edu.year, edu.id)}
+                                ${createInputField('GPA / Result', 'gpa', edu.gpa, edu.id)}
+                            </div>
+                        </div>
+                    `).join('')}
+                `;
+            } else if (activeTab === 'skills') {
+                const skillsString = data.join(', ');
+                html = `
+                    <h2 class="text-xl font-bold text-${primaryColorClass} border-b pb-2 mb-4 mt-6 flex justify-between items-center">Technical Skills</h2>
+                    ${createTextareaField('Enter skills separated by commas (e.g., React, Node.js, AWS)', 'skills', skillsString, null, 3)}
+                `;
+            }
+
+            container.innerHTML = html;
+        };
+
+        const handleFormChange = (section, name, value, id) => {
+            if (section === 'summary') {
+                updateState('summary', value);
+            } 
+            else if (section === 'skills') {
+                updateState('skills', value, 'skills');
+            }
+            else if (section === 'personal') {
+                updateState('personal', value, null, name);
+            }
+            else if (id) {
+                updateState(section, value, id, name);
+            }
+        };
+
+        const renderPreview = () => {
+            const docContainer = document.getElementById('resume-document');
+            if (!docContainer) return;
+
+            if (activeTemplate === 'modern') {
+                renderModernTemplate(docContainer);
+            } else if (activeTemplate === 'classic') {
+                renderClassicTemplate(docContainer);
+            } else if (activeTemplate === 'minimalist') {
+                renderMinimalistTemplate(docContainer);
+            }
+        };
+
+        const renderTabs = () => {
+            const tabContainer = document.getElementById('tab-buttons');
+            if (!tabContainer) return;
+            const { primaryColorClass, linkClass } = getActiveThemeColors();
+            const colorName = primaryColorClass.split('-')[0];
+
+            tabContainer.innerHTML = tabs.map(tab => `
+                <button
+                    onclick="setActiveTab('${tab.id}')"
+                    class="flex-1 min-w-[48%] py-2 px-3 text-sm font-medium rounded-lg transition duration-200 shadow-sm ${
+                        activeTab === tab.id
+                            ? `bg-${colorName}-600 text-white shadow-${colorName}-400/50`
+                            : `bg-gray-200 text-gray-700 hover:bg-${colorName}-100`
+                    }"
+                >
+                    ${tab.icon} ${tab.label}
+                </button>
+            `).join('');
+        };
+        
+        const renderSelectors = () => {
+            const selectorContainer = document.getElementById('selectors-container');
+            if (!selectorContainer) return;
+            
+            // 1. Template Selector
+            const templateOptionsHtml = templates.map(t => `
+                <option value="${t.id}" ${activeTemplate === t.id ? 'selected' : ''}>${t.name}</option>
+            `).join('');
+            
+            // 2. Theme Selector
+            const themeOptionsHtml = themes.map(t => `
+                <option value="${t.id}" ${activeTheme === t.id ? 'selected' : ''}>${t.name}</option>
+            `).join('');
+            
+            selectorContainer.innerHTML = `
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="template-select" class="text-sm font-medium text-gray-700 mb-2 block">Choose Resume Layout:</label>
+                        <select 
+                            id="template-select" 
+                            onchange="setActiveTemplate(this.value)"
+                            class="w-full p-2 border border-gray-300 rounded-lg bg-white focus:ring-sky-500 focus:border-sky-500 transition duration-150"
+                        >
+                            ${templateOptionsHtml}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="theme-select" class="text-sm font-medium text-gray-700 mb-2 block">Choose Color Theme:</label>
+                        <select 
+                            id="theme-select" 
+                            onchange="setActiveTheme(this.value)"
+                            class="w-full p-2 border border-gray-300 rounded-lg bg-white focus:ring-sky-500 focus:border-sky-500 transition duration-150"
+                        >
+                            ${themeOptionsHtml}
+                        </select>
+                    </div>
+                </div>
+            `;
+        }
+
+        const setActiveTab = (tabId) => {
+            activeTab = tabId;
+            renderTabs();
+            renderForm(); // Renders the form for the new tab
+        };
+
+        /**
+         * The main render function, called only on initialization and when 'Build' is clicked.
+         */
+        const render = () => {
+            renderTabs();
+            renderForm();
+            renderSelectors();
+            renderPreview(); // Only this call updates the document preview
+        };
+        
+        // Function linked to the 'Build' button
+        const handleBuild = () => {
+            render();
+            console.log('Resume preview manually refreshed.');
+        }
+
+        // --- Initialization ---
+
+        window.onload = () => {
+            loadData();
+            // Initial render is necessary to load the forms and the initial preview
+            render();
+            
+            // Set up event listeners for global actions
+            document.getElementById('save-button').onclick = handleSave;
+            document.getElementById('pdf-button').onclick = () => {
+                // Ensure latest data is rendered before printing
+                handleBuild(); 
+                generatePdf('resume-document', `${resumeData.personal.name || 'Resume'}_${activeTemplate}.pdf`);
+            };
+            // Event listener for the Build/Refresh button
+            document.getElementById('build-button').onclick = handleBuild;
+        };
+
+    </script>
+</head>
+<body class="bg-gray-100 antialiased">
+    <!-- Hidden elements to ensure Tailwind JIT includes dynamic classes -->
+    <div class="hidden">
+        <span class="text-sky-700 border-b-2 border-sky-700 bg-sky-500 hover:bg-sky-600 hover:text-sky-600"></span>
+        <span class="text-indigo-700 border-b-2 border-indigo-700 bg-indigo-600 hover:bg-indigo-700 hover:text-indigo-600"></span>
+        <span class="text-teal-600 border-b-2 border-teal-600 bg-teal-500 hover:bg-teal-600 hover:text-teal-500"></span>
+        <span class="text-slate-700 border-b-2 border-slate-700 bg-slate-600 hover:bg-slate-700 hover:text-slate-600"></span>
+        <span class="text-emerald-600 border-b-2 border-emerald-600 bg-emerald-500 hover:bg-emerald-600 hover:text-emerald-500"></span>
+        <span class="focus:border-sky-500 focus:ring-sky-500 focus:border-indigo-500 focus:ring-indigo-500 focus:border-teal-500 focus:ring-teal-500 focus:border-slate-500 focus:ring-slate-500 focus:border-emerald-500 focus:ring-emerald-500"></span>
+    </div>
+    <!-- End Hidden JIT elements -->
+
+    <!-- HEADER (Updated with ID and better responsiveness) -->
+    <header id="main-header" class="bg-sky-700 text-white p-4 shadow-lg hidden-for-print">
+        <div class="max-w-7xl mx-auto">
+            <h1 class="text-xl sm:text-2xl font-bold tracking-tight">Visionary Resume Builder</h1>
+        </div>
+    </header>
+    
+    <div class="flex flex-col lg:flex-row max-w-7xl mx-auto">
+        
+        <!-- Control Panel (Forms) -->
+        <div id="control-panel" class="lg:w-1/3 bg-white p-6 shadow-xl lg:min-h-screen hidden-for-print">
+            <div class="flex justify-end items-center mb-6 border-b pb-3 space-x-2">
+                <!-- SAVE BUTTON -->
+                <button id="save-button" title="Save Data Locally" class="p-2 bg-green-500 text-white rounded-full hover:bg-green-600 transition duration-150 shadow-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                </button>
+                <!-- PDF BUTTON -->
+                <button id="pdf-button" title="Download as PDF (Print)" class="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition duration-150 shadow-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 17 12 21 16 17"></polyline><line x1="12" y1="12" x2="12" y2="21"></line><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.27"></path></svg>
+                </button>
+            </div>
+            
+            <div id="selectors-container" class="bg-gray-50 p-4 rounded-xl shadow-inner mb-6">
+                 <!-- Template and Theme selectors rendered here -->
+            </div>
+            
+            <!-- Dynamic Build/Refresh Button -->
+            <button id="build-button" class="w-full mb-6 py-3 bg-sky-500 text-white font-bold rounded-lg hover:bg-sky-600 transition duration-150 shadow-lg flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 mr-2"><path d="M21.5 2v4h-4"/><path d="M2.5 22v-4h4"/><path d="M21.5 10c0 3.2-1.7 6.2-4.4 7.8-2.7 1.6-6.1 1.6-8.8 0C5.2 16.2 3.5 13.2 3.5 10c0-6.1 5.4-8 9-8s9 1.9 9 8z"/></svg>
+                Build/Refresh Preview
+            </button>
+
+
+            <div id="tab-buttons" class="flex flex-wrap gap-2 mb-4">
+                <!-- Tab buttons rendered here by renderTabs() -->
+            </div>
+
+            <div id="forms-container">
+                <!-- Forms rendered here by renderForm() -->
+            </div>
+        </div>
+
+        <!-- Resume Preview -->
+        <div class="lg:w-2/3 p-4">
+            <div id="resume-document" class="bg-white p-6 shadow-2xl mx-auto my-8 max-w-4xl min-h-[11in] print:shadow-none print:m-0 print:p-4 print:min-h-0">
+                <!-- Resume content rendered here by renderPreview() -->
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Update the build button style and main header style based on the selected theme after rendering
+        const updateBuildButton = () => {
+            const button = document.getElementById('build-button');
+            const header = document.getElementById('main-header'); // Use the new ID for robustness
+            const { buttonBgClass, buttonHoverClass, primaryColorClass } = getActiveThemeColors();
+            
+            // Define all possible color classes to ensure clean removal
+            const allBgClasses = themes.flatMap(t => [t.buttonBgClass, t.buttonHoverClass, t.primaryColorClass]);
+            
+            // Clean up button classes
+            button.classList.remove(...allBgClasses);
+            button.classList.add(buttonBgClass, buttonHoverClass);
+            
+            // Clean up header classes
+            if (header) {
+                header.classList.remove(...allBgClasses);
+                header.classList.add(primaryColorClass);
+            }
+        };
+
+        // Override the main render function to include button update
+        window.render = () => {
+            renderTabs();
+            renderForm();
+            renderSelectors();
+            renderPreview();
+            updateBuildButton();
+        };
+
+        // Re-call initialization to ensure the latest render is used
+        window.onload = () => {
+            loadData();
+            window.render();
+
+            // Re-set up event listeners for global actions (especially the build button)
+            document.getElementById('save-button').onclick = handleSave;
+            document.getElementById('pdf-button').onclick = () => {
+                handleBuild(); 
+                generatePdf('resume-document', `${resumeData.personal.name || 'Resume'}_${activeTemplate}.pdf`);
+            };
+            document.getElementById('build-button').onclick = handleBuild;
+        };
+    </script>
+</body>
+</html>
